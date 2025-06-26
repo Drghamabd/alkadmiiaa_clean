@@ -26,13 +26,13 @@ class DailyStatus extends Model
         'unpaid_leaves_count',
         'absences_count',
         'shortage',
-        // --- إضافة الحقول الجديدة هنا ---
-        'organizer_employee_id',   // لـ ID الموظف المنظم
-        'organizer_employee_name', // لاسم الموظف المنظم
+        'organizer_employee_id',
+        'organizer_employee_name',
+        'custom_usages', // تم إضافة هذا الحقل
     ];
 
     protected $casts = [
-        'date' => 'date', // غالباً ما يكون مفيداً تحويل التاريخ إلى كائن Carbon
+        'date' => 'date',
         'periodic_leaves' => 'array',
         'annual_leaves' => 'array',
         'temporary_leaves' => 'array',
@@ -43,8 +43,8 @@ class DailyStatus extends Model
         'bereavement_leaves' => 'array',
         'eid_leaves' => 'array',
         'guard_rest' => 'array',
-        // --- إضافة التحويلات للحقول الجديدة هنا ---
-        'organizer_employee_id' => 'integer',   // تحويل إلى عدد صحيح
-        'organizer_employee_name' => 'string',  // تحويل إلى نص
+        'custom_usages' => 'array', // تم إضافة هذا الحقل
+        'organizer_employee_id' => 'integer',
+        'organizer_employee_name' => 'string',
     ];
 }

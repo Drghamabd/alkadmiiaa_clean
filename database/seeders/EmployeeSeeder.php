@@ -59,7 +59,8 @@ class EmployeeSeeder extends Seeder
     ['name' => 'محمد علوان عبد الحسين هادي', 'employee_number' => 29051, 'job_title' => 'النظافة العامة', 'unit_id' => 1, 'role' => 'موظف'],
     ['name' => 'علي فاضل مظهور كاظم', 'employee_number' => 29053, 'job_title' => 'النظافة العامة', 'unit_id' => 1, 'role' => 'موظف'],
     ['name' => 'كاظم عباس شنان شعلان', 'employee_number' => 29055, 'job_title' => 'النظافة العامة', 'unit_id' => 1, 'role' => 'موظف'],
-    ['name' => 'علي معن هادي حسين', 'employee_number' => 29054, 'job_title' => 'النظافة العامة', 'unit_id' => 1, 'role' => 'موظف'],
+        ['name' => 'علي معن هادي حسين', 'employee_number' => 29054, 'job_title' => 'النظافة العامة', 'unit_id' => 1, 'role' => 'موظف'],
+    ['name' => '   كرار حيدر غالب كاظم', 'employee_number' => 19313, 'job_title' => 'النظافة العامة', 'unit_id' => 1, 'role' => 'موظف'],
     ['name' => 'يسر ثابت جعاز جواد', 'employee_number' => 28595, 'job_title' => 'النظافة العامة', 'unit_id' => 1, 'role' => 'موظف'],
           
 // المنشآت الصحية

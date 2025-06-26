@@ -30,7 +30,6 @@ class DailyStatusResource extends Resource
     protected static ?string $slug = 'daily-status';
     protected static ?string $navigationUrl = 'daily-status';
     protected static ?string $breadcrumb = 'الموقف اليومي';
-    protected static ?string $breadcrumbGroup = 'إدارة الموظفين';
     protected static ?string $breadcrumbPlural = 'المواقف اليومية';
     protected static ?string $breadcrumbPluralGroup = 'إدارة الموظفين';
 
@@ -82,6 +81,7 @@ class DailyStatusResource extends Resource
                             default => ''
                         } . ' - ' : '') . ($state['employee_name'] ?? null)),
 
+                    // إعادة حقل استراحة خفر إلى طبيعته الأصلية
                     self::makeLeaveRepeater('guard_rest', 'استراحة خفر'),
                 ]),
 
@@ -92,13 +92,55 @@ class DailyStatusResource extends Resource
                     self::makeLeaveRepeaterWithDates('long_leaves', 'الإجازات الطويلة'),
                     self::makeLeaveRepeaterWithDates('sick_leaves', 'الإجازات المرضية'),
                     self::makeLeaveRepeater('bereavement_leaves', 'إجازة وفاة'),
+                    
+                    // إضافة حقل استخدام مخصص جديد هنا
+                    Forms\Components\Repeater::make('custom_usages')
+                        ->label('الاستخدام ')
+                        ->schema([
+                            // حقول الموظف الأساسية
+                            Forms\Components\Select::make('employee_id')
+                                ->label('اسم الموظف')
+                                ->options(fn () => Employee::pluck('name', 'id'))
+                                ->searchable()
+                                ->required()
+                                ->live()
+                                ->afterStateUpdated(function ($state, Set $set) {
+                                    $employee = Employee::find($state);
+                                    if ($employee) {
+                                        $set('employee_number', $employee->employee_number);
+                                        $set('employee_name', $employee->name);
+                                    } else {
+                                        $set('employee_number', null);
+                                        $set('employee_name', null);
+                                    }
+                                }),
+                            Forms\Components\TextInput::make('employee_number')
+                                ->label('الرقم الوظيفي')
+                                ->numeric()
+                                ->required()
+                                ->readOnly(),
+                            Forms\Components\Hidden::make('employee_name'),
+                            
+                            // حقل تفاصيل الاستخدام
+                            Forms\Components\TextInput::make('usage_details')
+                                ->label('تفاصيل الاستخدام')
+                                ->placeholder('مثال: اجتماع، مهمة خارجية، دورة تدريبية...')
+                                ->required()
+                                ->columnSpanFull(), // ليأخذ عرض العمود بالكامل
+                        ])
+                        ->columns(3) // 3 أعمدة (اسم، رقم، تفاصيل استخدام)
+                        ->itemLabel(fn (array $state): ?string => 'استخدام: ' . ($state['employee_name'] ?? null)),
                 ]),
 
             Forms\Components\Section::make('الإحصائيات')
                 ->schema([
-                    Forms\Components\Placeholder::make('total_required')
+                    // تم تغيير هذا من Placeholder إلى TextInput ليصبح قابلاً للتعديل
+                    Forms\Components\TextInput::make('total_required')
                         ->label('الملاك')
-                        ->content('86'),
+                        ->numeric()
+                        ->default(86) // قيمة افتراضية يمكن تغييرها
+                        ->required()
+                        ->live(), // لتحديث النقص بناءً على هذه القيمة
 
                     Forms\Components\Placeholder::make('total_employees')
                         ->label('الموجود الحالي')
@@ -108,8 +150,8 @@ class DailyStatusResource extends Resource
 
                     Forms\Components\Placeholder::make('shortage')
                         ->label('النقص')
-                        ->content(function () {
-                            $required = 86;
+                        ->content(function (Get $get) { // استخدام Get للحصول على قيمة total_required
+                            $required = (int) ($get('total_required') ?? 86); // الحصول على القيمة المدخلة أو 86 كافتراضي
                             $current = \App\Models\Employee::where('is_active', 1)->count();
                             return $required - $current;
                         }),
@@ -120,9 +162,9 @@ class DailyStatusResource extends Resource
                             $current = \App\Models\Employee::where('is_active', 1)->count();
 
                             $paidLeaves = count($get('annual_leaves') ?? [])
-                                        + count($get('periodic_leaves') ?? [])
-                                        + count($get('sick_leaves') ?? [])
-                                        + count($get('bereavement_leaves') ?? []);
+                                         + count($get('periodic_leaves') ?? [])
+                                         + count($get('sick_leaves') ?? [])
+                                         + count($get('bereavement_leaves') ?? []);
 
                             $eidLeavesCount = 0;
                             foreach ($get('eid_leaves') ?? [] as $eidLeave) {
@@ -135,17 +177,20 @@ class DailyStatusResource extends Resource
                             $unpaidLeaves = count($get('unpaid_leaves') ?? []);
                             $absences = count($get('absences') ?? []);
                             $temporaryLeaves = count($get('temporary_leaves') ?? []);
+                            $guardRest = count($get('guard_rest') ?? []);
+                            $customUsages = count($get('custom_usages') ?? []); // إضافة الاستخدامات المخصصة
 
-                            return $current - ($paidLeaves + $unpaidLeaves + $absences + $temporaryLeaves);
+                            // الحضور الفعلي = الموجود الحالي - (جميع أنواع الإجازات والغياب واستراحة الخفر والاستخدامات المخصصة)
+                            return $current - ($paidLeaves + $unpaidLeaves + $absences + $temporaryLeaves + $guardRest + $customUsages);
                         }),
 
                     Forms\Components\Placeholder::make('paid_leaves_count')
                         ->label('إجازات براتب')
                         ->content(function (Get $get) {
                             $count = count($get('annual_leaves') ?? [])
-                                   + count($get('periodic_leaves') ?? [])
-                                   + count($get('sick_leaves') ?? [])
-                                   + count($get('bereavement_leaves') ?? []);
+                                       + count($get('periodic_leaves') ?? [])
+                                       + count($get('sick_leaves') ?? [])
+                                       + count($get('bereavement_leaves') ?? []);
 
                             foreach ($get('eid_leaves') ?? [] as $eidLeave) {
                                 if (isset($eidLeave['employee_id'])) {
@@ -175,6 +220,12 @@ class DailyStatusResource extends Resource
                         ->label('إجازات زمنية')
                         ->content(fn (Get $get) =>
                             count($get('temporary_leaves') ?? [])
+                        ),
+                    // إضافة عدد الاستخدامات المخصصة
+                    Forms\Components\Placeholder::make('custom_usages_count')
+                        ->label('الاستخدام ')
+                        ->content(fn (Get $get) =>
+                            count($get('custom_usages') ?? [])
                         ),
                 ])
                 ->columns(2),
@@ -211,6 +262,7 @@ class DailyStatusResource extends Resource
                 Tables\Columns\TextColumn::make('day_name')->label('اليوم'),
                 Tables\Columns\TextColumn::make('total_employees')->label('العدد الكلي'),
                 Tables\Columns\TextColumn::make('actual_attendance')->label('الحضور الفعلي'),
+                Tables\Columns\TextColumn::make('organizer_employee_name')->label('منظم الموقف'), // إضافة عمود لمنظم الموقف
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
@@ -277,11 +329,12 @@ class DailyStatusResource extends Resource
         return fn (array $state): ?string => $state['employee_name'] ?? null;
     }
 
-    protected static function makeLeaveRepeater(string $name, string $label): Forms\Components\Repeater
+    // هذا التابع أصبح يُستخدم للأنواع الأخرى غير استراحة الخفر والاستخدامات المخصصة الآن
+    protected static function makeLeaveRepeater(string $name, string $label, array $extraSchema = []): Forms\Components\Repeater
     {
         return Forms\Components\Repeater::make($name)
             ->label($label)
-            ->schema(self::getBaseLeaveRepeaterSchema())
+            ->schema(array_merge(self::getBaseLeaveRepeaterSchema(), $extraSchema)) // دمج الـ schema الأساسي مع الإضافي
             ->columns(2)
             ->itemLabel(self::getEmployeeItemLabelCallable());
     }
