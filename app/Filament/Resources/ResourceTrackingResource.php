@@ -4,14 +4,17 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ResourceTrackingResource\Pages;
 use App\Models\ResourceTracking;
-use App\Models\Unit; // Import the Unit model
+use App\Models\Unit;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Filament\Notifications\Notification; // Import Notification
+use Filament\Notifications\Notification;
+use App\Models\GeneralCleaningTask;
+use App\Models\SanitationFacilityTask;
+use Carbon\Carbon;
 
 class ResourceTrackingResource extends Resource
 {
@@ -91,28 +94,20 @@ class ResourceTrackingResource extends Resource
                     ->suffix(' لتر')
                     ->label('مواد التنظيف'),
 
-                Tables\Columns\TextColumn::make('equipment_usage')
-                    ->sortable()
-                    ->label('المعدات'),
-
                 Tables\Columns\TextColumn::make('efficiency')
                     ->label('الكفاءة (مهمة/ساعة)')
                     ->state(function (ResourceTracking $record) {
-                        // For demonstration, let's assume 'tasks_count' would come from a real count
-                        // If you need actual task counts for this display, you'd need to eager load or perform a subquery.
-                        // For now, this is a placeholder/example of how to calculate a simple efficiency.
-                        // The 'efficiency' in ActualResult is the more critical one.
-                        $completedGeneral = \App\Models\GeneralCleaningTask::where('unit_id', $record->unit_id)
+                        $completedGeneral = GeneralCleaningTask::where('unit_id', $record->unit_id)
                             ->whereDate('date', $record->date)
                             ->where('status', 'مكتمل')
                             ->count();
-                        $completedSanitation = \App\Models\SanitationFacilityTask::where('unit_id', $record->unit_id)
+                        $completedSanitation = SanitationFacilityTask::where('unit_id', $record->unit_id)
                             ->whereDate('date', $record->date)
                             ->where('status', 'مكتمل')
                             ->count();
                         $totalCompletedTasks = $completedGeneral + $completedSanitation;
 
-                        $hours = $record->working_hours ?? 1; // Prevent division by zero
+                        $hours = $record->working_hours ?? 1;
                         return round($totalCompletedTasks / max($hours, 1), 2);
                     }),
 
@@ -120,10 +115,7 @@ class ResourceTrackingResource extends Resource
                     ->label('كفء؟')
                     ->boolean()
                     ->state(fn(ResourceTracking $record) =>
-                        // This logic needs to be based on an actual definition of 'efficient'
-                        // For example: if efficiency (tasks per hour) is >= a certain threshold
-                        // Using a placeholder for now, you should define your efficiency threshold.
-                        $record->working_hours > 0 && ($record->cleaning_materials + $record->water_consumption + $record->equipment_usage) > 0 // Example: if any resource used
+                        $record->working_hours > 0 && ($record->cleaning_materials > 0 || $record->water_consumption > 0 || $record->equipment_usage > 0)
                     ),
 
                 Tables\Columns\TextColumn::make('notes')
@@ -140,7 +132,7 @@ class ResourceTrackingResource extends Resource
                     ->action(function () {
                         self::generateDailyResourceData();
                         Notification::make()
-                            ->title('تم توليد بيانات الموارد بنجاح')
+                            ->title('تم توليد / تحديث بيانات الموارد بنجاح')
                             ->success()
                             ->send();
                     }),
@@ -183,7 +175,6 @@ class ResourceTrackingResource extends Resource
         ];
     }
 
-    // Function to generate daily resource data for all units
     public static function generateDailyResourceData()
     {
         $units = Unit::all();
@@ -194,16 +185,110 @@ class ResourceTrackingResource extends Resource
                 ->where('date', $today)
                 ->first();
 
+            $totalCleaningMaterials = 0;
+            $totalWaterConsumption = 0;
+            $totalEquipmentUsage = 0;
+
+            $generalCleaningTasks = GeneralCleaningTask::where('unit_id', $unit->id)
+                ->whereDate('date', $today)
+                ->where('status', 'مكتمل')
+                ->get();
+
+            foreach ($generalCleaningTasks as $task) {
+                foreach ($task->resources_used ?? [] as $resource) {
+                    $itemName = $resource['name'] ?? '';
+                    $quantity = (float)($resource['quantity'] ?? 0);
+                    $resourceUnit = $resource['unit'] ?? '';
+
+                    // ✅ تم تحديث الشرط ليشمل "كفوف"، "كمامات"، "كاسات"، و "نفايات" / "أكياس نفايات"
+                    if (stripos($itemName, 'منظف') !== false ||
+                        stripos($itemName, 'صابون') !== false ||
+                        stripos($itemName, 'معقم') !== false ||
+                        stripos($itemName, 'كفوف') !== false ||
+                        stripos($itemName, 'كمامات') !== false ||
+                        stripos($itemName, 'كاسات') !== false ||
+                        stripos($itemName, 'نفايات') !== false || // هذا سيشمل "أكياس نفايات" و "صناديق نفايات" وما شابه
+                        stripos($itemName, 'أكياس نفايات') !== false
+                    ) {
+                        $totalCleaningMaterials += $quantity;
+                    } elseif (stripos($itemName, 'ماء') !== false || (stripos($resourceUnit, 'لتر') !== false && stripos($itemName, 'ماء') !== false)) {
+                        $totalWaterConsumption += $quantity;
+                    } elseif (stripos($itemName, 'مكنسة') !== false || stripos($itemName, 'ممسحة') !== false || stripos($itemName, 'جهاز') !== false) {
+                        $totalEquipmentUsage += $quantity;
+                    }
+                }
+            }
+
+            $sanitationTasks = SanitationFacilityTask::where('unit_id', $unit->id)
+                ->whereDate('date', $today)
+                ->where('status', 'مكتمل')
+                ->get();
+
+            foreach ($sanitationTasks as $task) {
+                foreach ($task->resources_used ?? [] as $resource) {
+                    $itemName = $resource['name'] ?? '';
+                    $quantity = (float)($resource['quantity'] ?? 0);
+                    $resourceUnit = $resource['unit'] ?? '';
+
+                    // ✅ تم تحديث الشرط ليشمل "كفوف"، "كمامات"، "كاسات"، و "نفايات" / "أكياس نفايات"
+                    if (stripos($itemName, 'منظف') !== false ||
+                        stripos($itemName, 'مطهر') !== false ||
+                        stripos($itemName, 'معطر') !== false ||
+                        stripos($itemName, 'تيزاب') !== false ||
+                        stripos($itemName, 'فلاش') !== false ||
+                        stripos($itemName, 'زاهي') !== false ||
+                        stripos($itemName, 'صابون') !== false ||
+                        stripos($itemName, 'صابون سائل') !== false ||
+                        stripos($itemName, 'ملمع') !== false ||
+                        stripos($itemName, 'سيم') !== false ||
+                        stripos($itemName, 'جلافة') !== false ||
+                        stripos($itemName, 'بطش') !== false ||
+                        stripos($itemName, 'سفنجة') !== false ||
+                        stripos($itemName, 'كفوف') !== false ||
+                         stripos($itemName, 'مكرافة') !== false ||
+                        stripos($itemName, 'مقشة') !== false ||
+                        stripos($itemName, 'شفرة') !== false ||
+                        stripos($itemName, 'ماء') !== false ||
+                        stripos($itemName, 'مياه') !== false ||
+                         stripos($itemName, 'ثلح') !== false ||
+                        stripos($itemName, 'ماء ارو') !== false ||
+                        stripos($itemName, 'كلاص') !== false ||
+                        stripos($itemName, 'كاس') !== false ||
+
+                        stripos($itemName, 'كمامات') !== false ||
+                        stripos($itemName, 'كاسات') !== false ||
+                        stripos($itemName, 'نفايات') !== false ||
+                        stripos($itemName, 'أكياس نفايات') !== false
+                    ) {
+                        $totalCleaningMaterials += $quantity;
+                    } elseif (stripos($itemName, 'ماء') !== false || (stripos($resourceUnit, 'لتر') !== false && stripos($itemName, 'ماء') !== false)) {
+                        $totalWaterConsumption += $quantity;
+                    } elseif (stripos($itemName, 'فرشاة') !== false || stripos($itemName, 'مضخة') !== false) {
+                        $totalEquipmentUsage += $quantity;
+                    }
+                }
+            }
+
+            $totalWorkingHours = $generalCleaningTasks->sum('working_hours') + $sanitationTasks->sum('working_hours');
+            $totalWorkingHours = $totalWorkingHours > 0 ? $totalWorkingHours : 8;
+
             if (!$existingRecord) {
-                // Create a new record with default or calculated values
                 ResourceTracking::create([
                     'date' => $today,
                     'unit_id' => $unit->id,
-                    'working_hours' => 8, // Default working hours
-                    'cleaning_materials' => 0, // Default to 0, can be adjusted
-                    'water_consumption' => 0, // Default to 0, can be adjusted
-                    'equipment_usage' => 0, // Default to 0, can be adjusted
-                    'notes' => 'بيانات تم توليدها تلقائياً لـ ' . $unit->name . ' بتاريخ ' . $today,
+                    'working_hours' => $totalWorkingHours,
+                    'cleaning_materials' => $totalCleaningMaterials,
+                    'water_consumption' => $totalWaterConsumption,
+                    'equipment_usage' => $totalEquipmentUsage,
+                    'notes' => 'بيانات تم توليدها تلقائياً لـ ' . $unit->name . ' بتاريخ ' . $today . ' بناءً على المهام المكتملة.',
+                ]);
+            } else {
+                $existingRecord->update([
+                    'working_hours' => $totalWorkingHours,
+                    'cleaning_materials' => $totalCleaningMaterials,
+                    'water_consumption' => $totalWaterConsumption,
+                    'equipment_usage' => $totalEquipmentUsage,
+                    'notes' => 'بيانات موارد تم تحديثها تلقائياً لـ ' . $unit->name . ' بتاريخ ' . $today . ' بناءً على المهام المكتملة.',
                 ]);
             }
         }
