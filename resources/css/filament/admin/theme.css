@@ -1,3 +1,122 @@
-@import '../../../../vendor/filament/filament/resources/css/theme.css';
+@import '../../../../vendor/filament/filament/resources/css/theme.css'; 
 
-@config 'tailwind.config.js';
+@config 'tailwind.config.js'; 
+
+/* 
+ * CSS لتفاعلات الشريط الجانبي (Sidebar) في Filament 
+ * هذا الكود سيجعل عناصر الشريط الجانبي تتفاعل عند مرور الماوس فوق النص. 
+*/ 
+
+/* استهداف نص عنصر الشريط الجانبي لتغيير اللون وتكبير الخط */ 
+.fi-sidebar-item-label { 
+    transition: color 0.2s ease-in-out, font-size 0.2s ease-in-out; /* انتقال سلس للون وحجم الخط */ 
+} 
+
+.fi-sidebar-item-label:hover { 
+    color: #ffcc00; /* لون أصفر/ذهبي فاتح عند التفاعل */ 
+    font-size: 1.05em; /* تكبير الخط بنسبة 5% */ 
+} 
+
+/* إذا كنت ترغب في تغيير خلفية العنصر بأكمله (الرابط) عند التفاعل */ 
+.fi-sidebar-item-link { 
+    transition: background-color 0.2s ease-in-out; 
+} 
+
+.fi-sidebar-item-link:hover { 
+    background-color: rgba(255, 153, 0, 0.1); /* خلفية برتقالية شفافة */ 
+} 
+
+/* يمكنك أيضًا استهداف الأيقونة إذا أردت تغييرها */ 
+.fi-sidebar-item-icon { 
+    transition: color 0.2s ease-in-out; 
+} 
+
+.fi-sidebar-item-link:hover .fi-sidebar-item-icon { 
+    color: #ffcc00; /* تغيير لون الأيقونة ليتناسب مع لون النص */ 
+}
+
+/* ========================================================= */
+/* 2. تخصيص البطاقات العامة (Dashboard Cards) */
+/* ========================================================= */
+
+/* قواعد عامة لبطاقات لوحة التحكم */
+.square-card {
+    transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out, border-color 0.3s ease-in-out;
+    /* الحواف المستديرة والظلال الأساسية تأتي من Tailwind classes في الـ Blade */
+    border: 1px solid transparent; /* حد افتراضي لضمان الانتقال السلس */
+}
+
+/* تأثير التفاعل عند مرور المؤشر على البطاقة */
+.square-card:hover {
+    transform: translateY(-8px) scale(1.03); /* رفع البطاقة وتكبيرها قليلاً */
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.35); /* ظل أعمق وأكثر انتشارًا */
+    border-color: #ff9900; /* إضافة حد برتقالي خفيف عند التفاعل */
+}
+
+/* ========================================================= */
+/* 3. تخصيص الأزرار العامة في Filament */
+/* ========================================================= */
+
+/* استهداف زر Filament الأساسي (مثال: زر التصدير، الأزرار الأخرى) */
+.fi-button,
+.fi-btn { /* Filament قد يستخدم fi-button أو fi-btn أو كليهما */
+    transition: background-color 0.3s ease-in-out, transform 0.3s ease-in-out,
+                box-shadow 0.3s ease-in-out, border-color 0.3s ease-in-out;
+    border-radius: 8px; /* حواف مستديرة للأزرار */
+    /* الألوان الأساسية تأتي من Filament نفسه (عادةً ما تكون primary color) */
+}
+
+.fi-button:hover,
+.fi-btn:hover {
+    transform: translateY(-2px) scale(1.02); /* رفع وتكبير طفيف */
+    box-shadow: 0 5px 12px rgba(0, 0, 0, 0.25); /* ظل خفيف عند التفاعل */
+    /* إذا كان الزر بلون أساسي (برتقالي)، فسنضيف ظلًا لونيًا */
+    background-color: rgba(255, 153, 0, 0.9); /* تفتيح بسيط أو تعتيم للخلفية */
+}
+
+/* تخصيص خاص للأزرار ذات اللون الأساسي (Primary Button) لتأثير hover */
+.fi-button.fi-btn-primary:hover,
+.fi-btn.fi-btn-primary:hover {
+    background-color: #e68a00; /* لون أغمق قليلاً للبرتقالي الأساسي */
+    box-shadow: 0 6px 15px rgba(255, 153, 0, 0.4); /* ظل بلون برتقالي */
+}
+
+/* الأزرار الشفافة (مثل زر الإضافة في الكانبان إذا كان لا يزال مستخدمًا في مكان آخر) */
+.fi-btn[x-ref="button"] { /* هذا قد يكون تحديدًا دقيقًا لبعض الأزرار */
+    transition: all 0.3s ease-in-out;
+}
+.fi-btn[x-ref="button"]:hover {
+    background-color: rgba(255, 153, 0, 0.15); /* خلفية برتقالية شفافة */
+    color: #ff9900;
+}
+
+
+/* ========================================================= */
+/* 4. تخصيص واجهة الكانبان (Kanban Board) - إذا كانت لا تزال مستخدمة */
+/* ========================================================= */
+
+/* تم إزالة هذا القسم بناءً على طلبك السابق للتركيز على الشريط الجانبي والبطاقات العامة */
+/* إذا كنت لا تزال تستخدم الكانبان في مكان آخر، يمكن استعادة الكود الخاص به هنا */
+/* ========================================================= */
+/* 4. تخصيص واجهة الكانبان (Kanban Board) - تفاعلية البطاقات فقط */
+/* ========================================================= */
+
+/* استهداف بطاقات الكانبان بناءً على كود Blade المقدم */
+.kanban-card {
+    /* هذه الخصائص هي للحفاظ على التصميم الحالي مع إضافة الانتقال السلس */
+    transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out, border-color 0.3s ease-in-out;
+    border: 1px solid transparent; /* حد افتراضي لضمان الانتقال السلس عند التفاعل */
+    cursor: pointer; /* للإشارة إلى أنها قابلة للتفاعل */
+    /* تأكد من أن أي خصائص تصميم موجودة (مثل الخلفية، الحواف المستديرة) تبقى هنا أو يتم تعريفها في مكان آخر */
+}
+
+.kanban-card:hover {
+    transform: translateY(-6px) scale(1.02); /* رفع البطاقة وتكبيرها قليلاً */
+    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.25); /* ظل أعمق وأكثر انتشارًا */
+    border-color: #ff9900; /* إضافة حد برتقالي خفيف عند التفاعل */
+}
+
+/* (اختياري) لتغيير لون العنوان داخل البطاقة عند التفاعل، إذا أردت إبرازه */
+.kanban-card:hover .kanban-card-title {
+    color: #ff9900; /* تغيير لون العنوان ليتناسب مع لون الحد */
+}

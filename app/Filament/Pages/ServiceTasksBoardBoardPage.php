@@ -53,7 +53,7 @@ class ServiceTasksBoardPage extends KanbanBoardPage
                 'unit' => 'purple',
                 'due_date' => 'sky',
                 'assignee_name' => 'indigo',
-                'priority' => 'priority_color',
+                'priority' => 'blue',  // تعديل هنا حسب الأولوية
             ])
             ->cardAttributeIcons([
                 'unit' => 'heroicon-o-building-office',
@@ -147,16 +147,16 @@ class ServiceTasksBoardPage extends KanbanBoardPage
                     ->modalHeading('تأكيد الحذف')
                     ->modalDescription('هل أنت متأكد من حذف هذه المهمة؟ لا يمكن التراجع.')
                     ->action(function (Action $action) {
-    $record = $action->getRecord();
+                        $record = $action->getRecord();
 
-    if ($record) {
-        $record->delete();
+                        if ($record) {
+                            $record->delete();
 
-        Notification::make()
-            ->title('تم الحذف')
-            ->body('تم حذف المهمة بنجاح.')
-            ->success()
-            ->send();
+                            Notification::make()
+                                ->title('تم الحذف')
+                                ->body('تم حذف المهمة بنجاح.')
+                                ->success()
+                                ->send();
                         }
                     }),
             ]);
